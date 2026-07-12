@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="recientes"
+        android:textColor="#66FFFFFF"
+        android:textSize="12sp"
+        android:fontFamily="monospace"
+        android:letterSpacing="0.3"
+        android:layout_marginBottom="16dp" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/tasksContainer"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingBottom="16dp" />
+
+    <TextView
+        android:id="@+id/emptyView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="no hay apps recientes"
+        android:textColor="#66FFFFFF"
+        android:textSize="14sp"
+        android:fontFamily="monospace"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/clearAllButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="cerrar todo"
+        android:textColor="#8AB4F8"
+        android:textSize="14sp"
+        android:fontFamily="monospace"
+        android:paddingHorizontal="24dp"
+        android:paddingVertical="12dp"
+        android:layout_marginTop="16dp" />
+
+</LinearLayout>

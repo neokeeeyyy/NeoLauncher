@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base colors OLED/AMOLED -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="transparent">#00000000</color>
+
+    <!-- Backgrounds -->
+    <color name="background_primary">#FF000000</color>
+    <color name="background_secondary">#FF0A0A0A</color>
+    <color name="background_tertiary">#FF141414</color>
+    <color name="background_card">#FF1A1A1A</color>
+    <color name="background_card_pressed">#FF242424</color>
+
+    <!-- Text colors -->
+    <color name="text_primary">#FFFFFFFF</color>
+    <color name="text_secondary">#B3FFFFFF</color>
+    <color name="text_tertiary">#66FFFFFF</color>
+    <color name="text_hint">#80FFFFFF</color>
+
+    <!-- Accent -->
+    <color name="accent">#FF8AB4F8</color>
+    <color name="accent_dim">#1A8AB4F8</color>
+
+    <!-- Divider -->
+    <color name="divider">#1AFFFFFF</color>
+
+    <!-- Task Switcher -->
+    <color name="task_card_bg">#FF1A1A1A</color>
+    <color name="task_close_bg">#33FFFFFF</color>
+    <color name="task_close">#FFFFFFFF</color>
+    <color name="blur_overlay">#B3000000</color>
+</resources>

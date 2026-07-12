@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NeoLauncher</string>
+    <string name="all_apps">todas las apps</string>
+    <string name="focus">focus</string>
+    <string name="settings">settings</string>
+    <string name="search_hint">buscar…</string>
+    <string name="focus_mode">focus mode</string>
+    <string name="pomodoro">pomodoro</string>
+    <string name="short_break">short break</string>
+    <string name="long_break">long break</string>
+    <string name="start">iniciar</string>
+    <string name="reset">reset</string>
+    <string name="close">cerrar</string>
+</resources>
