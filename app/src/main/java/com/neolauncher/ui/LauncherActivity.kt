@@ -195,6 +195,10 @@ class LauncherActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupAllAppsOverlay() {
+        // Setup is done in showAllApps()
+    }
+
     private fun showAllApps() {
         allAppsOverlay.visibility = View.VISIBLE
         allAppsOverlay.alpha = 0f
@@ -258,7 +262,7 @@ class LauncherActivity : AppCompatActivity() {
     private fun toggleFocus() {
         if (isFocusRunning) {
             isFocusRunning = false
-            btnStartFocus.text = getString(R.id.start)
+            btnStartFocus.text = getString(R.string.start)
         } else {
             isFocusRunning = true
             isFocusMode = true
@@ -280,7 +284,7 @@ class LauncherActivity : AppCompatActivity() {
                     isFocusRunning = false
                     isFocusMode = false
                     focusIndicator.visibility = View.GONE
-                    btnStartFocus.text = getString(R.id.start)
+                    btnStartFocus.text = getString(R.string.start)
                 }
             }
         }
@@ -290,7 +294,7 @@ class LauncherActivity : AppCompatActivity() {
     private fun resetFocus() {
         focusTimeRemaining = focusDuration
         isFocusRunning = false
-        btnStartFocus.text = getString(R.id.start)
+        btnStartFocus.text = getString(R.string.start)
         updateFocusUI()
     }
 

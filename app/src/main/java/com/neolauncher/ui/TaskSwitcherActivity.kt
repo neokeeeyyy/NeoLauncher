@@ -67,7 +67,7 @@ class TaskSwitcherActivity : AppCompatActivity() {
                 label = packageManager.getApplicationLabel(appInfo).toString(),
                 icon = packageManager.getApplicationIcon(appInfo),
                 taskId = task.id,
-                taskAffinity = task.taskAffinity ?: ""
+                baseIntent = intent
             )
 
             if (this.recentTasks.none { it.packageName == packageName }) {
@@ -104,9 +104,6 @@ class TaskSwitcherActivity : AppCompatActivity() {
     }
 
     private fun closeTask(task: TaskInfo, position: Int) {
-        val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        activityManager.removeTask(task.taskId)
-
         recentTasks.removeAt(position)
         tasksContainer.adapter?.notifyItemRemoved(position)
         tasksContainer.adapter?.notifyItemRangeChanged(position, recentTasks.size - position)
@@ -119,10 +116,6 @@ class TaskSwitcherActivity : AppCompatActivity() {
     }
 
     private fun clearAllTasks() {
-        val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        recentTasks.forEach { task ->
-            activityManager.removeTask(task.taskId)
-        }
         recentTasks.clear()
         tasksContainer.adapter?.notifyDataSetChanged()
         emptyView.visibility = View.VISIBLE
@@ -140,7 +133,7 @@ class TaskSwitcherActivity : AppCompatActivity() {
         val label: String,
         val icon: Drawable,
         val taskId: Int,
-        val taskAffinity: String
+        val baseIntent: Intent
     )
 
     class TaskAdapter(
