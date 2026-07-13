@@ -5,11 +5,13 @@
     <string name="focus">focus</string>
     <string name="settings">settings</string>
     <string name="search_hint">buscar…</string>
-    <string name="focus_mode">focus mode</string>
+    <string name="focus_mode">modo enfoque</string>
     <string name="pomodoro">pomodoro</string>
-    <string name="short_break">short break</string>
-    <string name="long_break">long break</string>
+    <string name="short_break">descanso corto</string>
+    <string name="long_break">descanso largo</string>
     <string name="start">iniciar</string>
-    <string name="reset">reset</string>
+    <string name="pause">pausa</string>
+    <string name="reset">reiniciar</string>
     <string name="close">cerrar</string>
+    <string name="stop_alarm">detener alarma</string>
 </resources>

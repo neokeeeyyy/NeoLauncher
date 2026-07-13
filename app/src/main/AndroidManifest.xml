@@ -52,16 +52,6 @@
             android:taskAffinity=""
             android:theme="@style/Theme.NeoLauncher.Translucent" />
 
-        <activity
-            android:name=".ui.AllAppsActivity"
-            android:exported="false"
-            android:theme="@style/Theme.NeoLauncher"
-            android:windowSoftInputMode="stateVisible|adjustResize" />
-
-        <activity
-            android:name=".ui.FocusModeActivity"
-            android:exported="false"
-            android:theme="@style/Theme.NeoLauncher" />
 
         <service
             android:name=".ui.MediaNotificationListenerService"
