@@ -169,7 +169,7 @@ class LauncherActivity : AppCompatActivity() {
     private var touchStartY = 0f
 
     private fun setupSwipe() {
-        tvClock.setOnTouchListener { _, event ->
+        clockFlipper.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     touchStartX = event.x
@@ -199,7 +199,7 @@ class LauncherActivity : AppCompatActivity() {
                                 clockFlipper.displayedChild = 1
                             }
                         }
-                    } else if (kotlin.math.abs(dx) < 30 && kotlin.math.abs(dy) < 30) {
+                    } else if (kotlin.math.abs(dx) < 30 && kotlin.math.abs(dy) < 30 && clockFlipper.displayedChild == 0) {
                         showFocusMode()
                     }
                     true
