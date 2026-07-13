@@ -10,6 +10,7 @@ class MediaNotificationListenerService : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val extras = sbn.notification.extras ?: return
+        activePackage = sbn.packageName
         val token = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             extras.getParcelable(android.app.Notification.EXTRA_MEDIA_SESSION, MediaSession.Token::class.java)
         } else {
@@ -31,6 +32,7 @@ class MediaNotificationListenerService : NotificationListenerService() {
         }
         if (hadToken != null && activeController?.packageName == sbn.packageName) {
             activeController = null
+            activePackage = null
         }
     }
 
@@ -43,6 +45,7 @@ class MediaNotificationListenerService : NotificationListenerService() {
         super.onDestroy()
         instance = null
         activeController = null
+        activePackage = null
     }
 
     companion object {
@@ -50,6 +53,9 @@ class MediaNotificationListenerService : NotificationListenerService() {
 
         @Volatile
         var activeController: MediaController? = null
+
+        @Volatile
+        var activePackage: String? = null
 
         fun getFromInstance(): MediaController? {
             val inst = instance ?: return null

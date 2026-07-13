@@ -45,6 +45,7 @@ class LauncherActivity : AppCompatActivity() {
     private lateinit var btnPlayPause: ImageView
     private lateinit var btnPrev: ImageView
     private lateinit var btnNext: ImageView
+    private lateinit var ivAppIcon: ImageView
     private lateinit var appsList: RecyclerView
     private lateinit var focusOverlay: FrameLayout
     private lateinit var btnCloseFocus: ImageView
@@ -58,6 +59,7 @@ class LauncherActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private var currentController: MediaController? = null
     private var isMusicPlaying = false
+    private var hasMusic = false
     private var activeSessionsListener: MediaSessionManager.OnActiveSessionsChangedListener? = null
     private var notificationRedirected = false
     private var didFirstLaunch = false
@@ -132,6 +134,7 @@ class LauncherActivity : AppCompatActivity() {
         btnPlayPause = findViewById(R.id.btnPlayPause)
         btnPrev = findViewById(R.id.btnPrev)
         btnNext = findViewById(R.id.btnNext)
+        ivAppIcon = findViewById(R.id.ivAppIcon)
         appsList = findViewById(R.id.appsList)
         focusOverlay = findViewById(R.id.focusOverlay)
         btnCloseFocus = findViewById(R.id.btnCloseFocus)
@@ -149,12 +152,10 @@ class LauncherActivity : AppCompatActivity() {
         prefs.edit().putBoolean("first_launch_done", true).apply()
         didFirstLaunch = true
 
-        // Request notification permission (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 0)
         }
 
-        // Open notification listener settings
         handler.postDelayed({
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         }, 500)
@@ -162,33 +163,39 @@ class LauncherActivity : AppCompatActivity() {
 
     private fun setupClock() {
         handler.post(clockRunnable)
-        tvClock.setOnClickListener { showFocusMode() }
     }
 
     private var touchStartX = 0f
+    private var touchStartY = 0f
 
     private fun setupSwipe() {
-        clockFlipper.setOnTouchListener { _, event ->
+        tvClock.setOnTouchListener { _, event ->
             when (event.action) {
-                MotionEvent.ACTION_DOWN -> touchStartX = event.x
+                MotionEvent.ACTION_DOWN -> {
+                    touchStartX = event.x
+                    touchStartY = event.y
+                    true
+                }
                 MotionEvent.ACTION_UP -> {
                     val dx = event.x - touchStartX
-                    if (kotlin.math.abs(dx) > 120) {
-                        if (dx < 0 && clockFlipper.displayedChild == 0) {
-                            if (musicPlayer.visibility == View.VISIBLE) {
-                                clockFlipper.setInAnimation(this@LauncherActivity, R.anim.slide_in_right)
-                                clockFlipper.setOutAnimation(this@LauncherActivity, R.anim.slide_out_left)
-                                clockFlipper.showNext()
-                            }
+                    val dy = event.y - touchStartY
+                    if (kotlin.math.abs(dx) > 120 && kotlin.math.abs(dx) > kotlin.math.abs(dy) * 2) {
+                        if (dx < 0 && clockFlipper.displayedChild == 0 && hasMusic) {
+                            clockFlipper.setInAnimation(this, R.anim.slide_in_right)
+                            clockFlipper.setOutAnimation(this, R.anim.slide_out_left)
+                            clockFlipper.showNext()
                         } else if (dx > 0 && clockFlipper.displayedChild == 1) {
-                            clockFlipper.setInAnimation(this@LauncherActivity, R.anim.slide_in_left)
-                            clockFlipper.setOutAnimation(this@LauncherActivity, R.anim.slide_out_right)
+                            clockFlipper.setInAnimation(this, R.anim.slide_in_left)
+                            clockFlipper.setOutAnimation(this, R.anim.slide_out_right)
                             clockFlipper.showPrevious()
                         }
+                    } else if (kotlin.math.abs(dx) < 30 && kotlin.math.abs(dy) < 30) {
+                        showFocusMode()
                     }
+                    true
                 }
+                else -> true
             }
-            false
         }
     }
 
@@ -289,27 +296,49 @@ class LauncherActivity : AppCompatActivity() {
         if (controller != null) {
             val metadata = controller.metadata
             val state = controller.playbackState
-            val hasMedia = metadata != null || state != null
-            if (hasMedia) {
-                musicPlayer.visibility = View.VISIBLE
-                tvTrackTitle.text = metadata?.getString(android.media.MediaMetadata.METADATA_KEY_TITLE) ?: "Sin información"
+            if (metadata != null || state != null) {
+                hasMusic = true
+                tvTrackTitle.text = metadata?.getString(android.media.MediaMetadata.METADATA_KEY_TITLE) ?: "Sin informaci\u00f3n"
                 tvTrackArtist.text = metadata?.getString(android.media.MediaMetadata.METADATA_KEY_ARTIST) ?: ""
                 isMusicPlaying = state?.state == PlaybackState.STATE_PLAYING
                 btnPlayPause.setImageResource(if (isMusicPlaying) R.drawable.ic_pause else R.drawable.ic_play)
+
+                var pkg: String? = null
+                try {
+                    pkg = controller.packageName
+                } catch (_: Exception) { }
+                if (pkg == null) {
+                    pkg = MediaNotificationListenerService.activePackage
+                }
+                if (pkg != null) {
+                    try {
+                        val icon = packageManager.getApplicationIcon(pkg)
+                        ivAppIcon.setImageDrawable(icon)
+                        ivAppIcon.setColorFilter(0xFFFFFFFF.toInt(), android.graphics.PorterDuff.Mode.SRC_IN)
+                    } catch (_: Exception) {
+                        ivAppIcon.setImageDrawable(null)
+                    }
+                } else {
+                    ivAppIcon.setImageDrawable(null)
+                }
                 return
             }
         }
 
         val am = getSystemService(AUDIO_SERVICE) as AudioManager
         if (am.isMusicActive) {
-            musicPlayer.visibility = View.VISIBLE
+            hasMusic = true
             tvTrackTitle.text = "Reproduciendo..."
             tvTrackArtist.text = ""
             isMusicPlaying = true
             btnPlayPause.setImageResource(R.drawable.ic_pause)
+            ivAppIcon.setImageDrawable(null)
         } else {
-            musicPlayer.visibility = View.GONE
+            hasMusic = false
             isMusicPlaying = false
+            ivAppIcon.setImageDrawable(null)
+            tvTrackTitle.text = ""
+            tvTrackArtist.text = ""
             if (clockFlipper.displayedChild == 1) {
                 clockFlipper.setInAnimation(this, R.anim.slide_in_left)
                 clockFlipper.setOutAnimation(this, R.anim.slide_out_right)

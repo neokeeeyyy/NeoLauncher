@@ -12,14 +12,14 @@
         android:paddingStart="24dp"
         android:paddingEnd="24dp">
 
-        <!-- ViewFlipper: page 0 = clock, page 1 = player -->
         <ViewFlipper
             android:id="@+id/clockFlipper"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:inAnimation="@anim/slide_in_right"
             android:outAnimation="@anim/slide_out_left"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="12dp"
+            android:measureAllChildren="false">
 
             <!-- Page 0: Clock -->
             <LinearLayout
@@ -56,10 +56,18 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:paddingVertical="4dp"
-                android:paddingStart="4dp"
+                android:paddingVertical="6dp"
+                android:paddingStart="0dp"
                 android:paddingEnd="8dp"
                 android:background="#1AFFFFFF">
+
+                <ImageView
+                    android:id="@+id/ivAppIcon"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:scaleType="fitCenter"
+                    android:padding="2dp"
+                    android:layout_marginEnd="10dp" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -96,7 +104,7 @@
                     android:src="@drawable/ic_skip_previous"
                     android:tint="#66FFFFFF"
                     android:padding="2dp"
-                    android:layout_marginEnd="8dp" />
+                    android:layout_marginEnd="6dp" />
 
                 <ImageView
                     android:id="@+id/btnPlayPause"
@@ -105,7 +113,7 @@
                     android:src="@drawable/ic_play"
                     android:tint="#FFFFFFFF"
                     android:padding="2dp"
-                    android:layout_marginEnd="8dp" />
+                    android:layout_marginEnd="6dp" />
 
                 <ImageView
                     android:id="@+id/btnNext"
@@ -119,7 +127,6 @@
 
         </ViewFlipper>
 
-        <!-- App List -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/appsList"
             android:layout_width="match_parent"
