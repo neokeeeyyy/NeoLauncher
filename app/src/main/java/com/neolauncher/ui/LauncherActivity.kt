@@ -201,13 +201,18 @@ class LauncherActivity : AppCompatActivity() {
     }
 
     private fun requestNotificationListenerAccess() {
-        val enabled = NotificationManager.getEnabledListenerPackages().contains(packageName)
-        if (enabled) {
+        if (isNotificationListenerEnabled()) {
             requestAccessibilityService()
             return
         }
         permissionStep = 1
         settingsLauncher.launch(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+    }
+
+    private fun isNotificationListenerEnabled(): Boolean {
+        val component = ComponentName(this, MediaNotificationListenerService::class.java).flattenToString()
+        val enabled = Settings.Secure.getString(contentResolver, "enabled_notification_listeners") ?: ""
+        return enabled.split(':').any { it.equals(component, ignoreCase = true) }
     }
 
     private fun requestAccessibilityService() {
