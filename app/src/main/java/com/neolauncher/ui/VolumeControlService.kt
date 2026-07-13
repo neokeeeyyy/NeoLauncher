@@ -54,7 +54,7 @@ class VolumeControlService : AccessibilityService() {
     }
 
     private fun showOverlay() {
-        handler.removeCallbacks(dismissRunnable)
+        removeDismiss()
 
         if (overlayView == null) {
             overlayView = VolumeOverlayView(this).apply {
@@ -98,9 +98,14 @@ class VolumeControlService : AccessibilityService() {
     }
 
     private fun resetDismiss() {
-        handler.removeCallbacks(dismissRunnable)
-        dismissRunnable = Runnable { dismissOverlay() }
-        handler.postDelayed(dismissRunnable!!, 2000)
+        removeDismiss()
+        val r = Runnable { dismissOverlay() }
+        dismissRunnable = r
+        handler.postDelayed(r, 2000)
+    }
+
+    private fun removeDismiss() {
+        dismissRunnable?.let { handler.removeCallbacks(it) }
     }
 
     private fun updateOverlay() {
@@ -121,7 +126,7 @@ class VolumeControlService : AccessibilityService() {
 
     override fun onDestroy() {
         super.onDestroy()
-        handler.removeCallbacks(dismissRunnable)
+        removeDismiss()
         dismissOverlay()
     }
 }
