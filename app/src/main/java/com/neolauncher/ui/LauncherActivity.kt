@@ -1,5 +1,6 @@
 package com.neolauncher.ui
 
+import android.app.AppOpsManager
 import android.app.NotificationManager
 import android.app.usage.UsageStatsManager
 import android.content.ComponentName
@@ -29,6 +30,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import android.widget.ViewFlipper
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -62,6 +64,14 @@ class LauncherActivity : AppCompatActivity() {
     private lateinit var taskSwitcherOverlay: FrameLayout
     private lateinit var taskList: RecyclerView
     private var showingHidden = false
+    private var permissionStep = 0
+
+    private val settingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        when (permissionStep) {
+            1 -> requestAccessibilityService()
+            2 -> requestUsageStats()
+        }
+    }
 
     private val handler = Handler(Looper.getMainLooper())
     private var currentController: MediaController? = null
@@ -172,22 +182,67 @@ class LauncherActivity : AppCompatActivity() {
         if (prefs.getBoolean("first_launch_done", false)) return
         prefs.edit().putBoolean("first_launch_done", true).apply()
         didFirstLaunch = true
+        requestNotificationPermission()
+    }
 
+    private fun requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 0)
+        } else {
+            requestNotificationListenerAccess()
         }
+    }
 
-        handler.postDelayed({
-            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-        }, 500)
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 0) {
+            requestNotificationListenerAccess()
+        }
+    }
 
-        handler.postDelayed({
-            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-        }, 2000)
+    private fun requestNotificationListenerAccess() {
+        val enabled = NotificationManager.getEnabledListenerPackages().contains(packageName)
+        if (enabled) {
+            requestAccessibilityService()
+            return
+        }
+        permissionStep = 1
+        settingsLauncher.launch(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+    }
 
-        handler.postDelayed({
-            startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-        }, 3500)
+    private fun requestAccessibilityService() {
+        if (isAccessibilityServiceEnabled()) {
+            requestUsageStats()
+            return
+        }
+        permissionStep = 2
+        settingsLauncher.launch(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+    }
+
+    private fun requestUsageStats() {
+        if (isUsageStatsGranted()) return
+        permissionStep = 3
+        settingsLauncher.launch(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+    }
+
+    private fun isAccessibilityServiceEnabled(): Boolean {
+        try {
+            val serviceStr = "$packageName/${TaskSwitcherService::class.java.name}"
+            val enabled = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: ""
+            return enabled.split(':').any { it.equals(serviceStr, ignoreCase = true) }
+        } catch (_: Exception) {
+            return false
+        }
+    }
+
+    private fun isUsageStatsGranted(): Boolean {
+        try {
+            val appOps = getSystemService(APP_OPS_SERVICE) as AppOpsManager
+            val mode = appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), packageName)
+            return mode == AppOpsManager.MODE_ALLOWED
+        } catch (_: Exception) {
+            return false
+        }
     }
 
     private fun setupClock() {
