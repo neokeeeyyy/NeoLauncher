@@ -7,7 +7,6 @@ import android.media.AudioManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import android.provider.Settings
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.WindowManager
@@ -50,12 +49,12 @@ class VolumeControlService : AccessibilityService() {
 
     private fun getVolumeSetting(stream: Int): String {
         return when (stream) {
-            AudioManager.STREAM_MUSIC -> Settings.System.VOLUME_MUSIC
-            AudioManager.STREAM_RING -> Settings.System.VOLUME_RING
-            AudioManager.STREAM_ALARM -> Settings.System.VOLUME_ALARM
-            AudioManager.STREAM_NOTIFICATION -> Settings.System.VOLUME_NOTIFICATION
-            AudioManager.STREAM_SYSTEM -> Settings.System.VOLUME_SYSTEM
-            else -> Settings.System.VOLUME_MUSIC
+            AudioManager.STREAM_MUSIC -> "volume_music"
+            AudioManager.STREAM_RING -> "volume_ring"
+            AudioManager.STREAM_ALARM -> "volume_alarm"
+            AudioManager.STREAM_NOTIFICATION -> "volume_notification"
+            AudioManager.STREAM_SYSTEM -> "volume_system"
+            else -> "volume_music"
         }
     }
 
