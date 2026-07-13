@@ -25,7 +25,7 @@ class VolumeControlService : AccessibilityService() {
     private val volumeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == "android.media.VOLUME_CHANGED_ACTION") {
-                val stream = intent.getIntExtra(AudioManager.EXTRA_VOLUME_STREAM_TYPE, -1)
+                val stream = intent.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", -1)
                 if (stream != -1) currentStream = stream
                 val now = System.currentTimeMillis()
                 if (now - lastVolumeChange > 300) {
