@@ -45,7 +45,7 @@ class LauncherActivity : AppCompatActivity() {
     private lateinit var btnPlayPause: ImageView
     private lateinit var btnPrev: ImageView
     private lateinit var btnNext: ImageView
-    private lateinit var ivAppIcon: ImageView
+    private lateinit var ivAlbumArt: ImageView
     private lateinit var appsList: RecyclerView
     private lateinit var focusOverlay: FrameLayout
     private lateinit var btnCloseFocus: ImageView
@@ -134,7 +134,7 @@ class LauncherActivity : AppCompatActivity() {
         btnPlayPause = findViewById(R.id.btnPlayPause)
         btnPrev = findViewById(R.id.btnPrev)
         btnNext = findViewById(R.id.btnNext)
-        ivAppIcon = findViewById(R.id.ivAppIcon)
+        ivAlbumArt = findViewById(R.id.ivAlbumArt)
         appsList = findViewById(R.id.appsList)
         focusOverlay = findViewById(R.id.focusOverlay)
         btnCloseFocus = findViewById(R.id.btnCloseFocus)
@@ -186,7 +186,8 @@ class LauncherActivity : AppCompatActivity() {
                             if (clockFlipper.displayedChild == 0 && hasMusic) {
                                 clockFlipper.showNext()
                             } else if (clockFlipper.displayedChild == 1) {
-                                clockFlipper.showPrevious()
+                                clockFlipper.showNext()
+                                clockFlipper.displayedChild = 0
                             }
                         } else {
                             clockFlipper.setInAnimation(this, R.anim.slide_in_left)
@@ -194,7 +195,8 @@ class LauncherActivity : AppCompatActivity() {
                             if (clockFlipper.displayedChild == 1) {
                                 clockFlipper.showPrevious()
                             } else if (clockFlipper.displayedChild == 0 && hasMusic) {
-                                clockFlipper.showNext()
+                                clockFlipper.showPrevious()
+                                clockFlipper.displayedChild = 1
                             }
                         }
                     } else if (kotlin.math.abs(dx) < 30 && kotlin.math.abs(dy) < 30) {
@@ -311,23 +313,12 @@ class LauncherActivity : AppCompatActivity() {
                 isMusicPlaying = state?.state == PlaybackState.STATE_PLAYING
                 btnPlayPause.setImageResource(if (isMusicPlaying) R.drawable.ic_pause else R.drawable.ic_play)
 
-                var pkg: String? = null
-                try {
-                    pkg = controller.packageName
-                } catch (_: Exception) { }
-                if (pkg == null) {
-                    pkg = MediaNotificationListenerService.activePackage
-                }
-                if (pkg != null) {
-                    try {
-                        val icon = packageManager.getApplicationIcon(pkg)
-                        ivAppIcon.setImageDrawable(icon)
-                        ivAppIcon.setColorFilter(0xFFFFFFFF.toInt(), android.graphics.PorterDuff.Mode.SRC_IN)
-                    } catch (_: Exception) {
-                        ivAppIcon.setImageDrawable(null)
-                    }
+                val art = metadata?.getBitmap(android.media.MediaMetadata.METADATA_KEY_ALBUM_ART)
+                if (art != null) {
+                    ivAlbumArt.setImageBitmap(art)
+                    ivAlbumArt.visibility = View.VISIBLE
                 } else {
-                    ivAppIcon.setImageDrawable(null)
+                    ivAlbumArt.visibility = View.GONE
                 }
                 return
             }
@@ -340,11 +331,11 @@ class LauncherActivity : AppCompatActivity() {
             tvTrackArtist.text = ""
             isMusicPlaying = true
             btnPlayPause.setImageResource(R.drawable.ic_pause)
-            ivAppIcon.setImageDrawable(null)
+            ivAlbumArt.visibility = View.GONE
         } else {
             hasMusic = false
             isMusicPlaying = false
-            ivAppIcon.setImageDrawable(null)
+            ivAlbumArt.visibility = View.GONE
             tvTrackTitle.text = ""
             tvTrackArtist.text = ""
             if (clockFlipper.displayedChild == 1) {
