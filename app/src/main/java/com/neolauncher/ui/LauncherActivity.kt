@@ -1,5 +1,6 @@
 package com.neolauncher.ui
 
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.MediaPlayer
@@ -52,6 +53,7 @@ class LauncherActivity : AppCompatActivity() {
     private var currentController: MediaController? = null
     private var isMusicPlaying = false
     private var clockSmall = false
+    private var activeSessionsListener: MediaSessionManager.OnActiveSessionsChangedListener? = null
 
     // Focus mode
     private var focusDuration = 25 * 60 * 1000L
@@ -64,6 +66,13 @@ class LauncherActivity : AppCompatActivity() {
         override fun run() {
             updateClock()
             handler.postDelayed(this, 1000)
+        }
+    }
+
+    private val mediaPollRunnable = object : Runnable {
+        override fun run() {
+            refreshMediaController()
+            handler.postDelayed(this, 2000)
         }
     }
 
@@ -92,6 +101,7 @@ class LauncherActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         handler.post(clockRunnable)
+        handler.post(mediaPollRunnable)
         refreshMediaController()
         updateMusicInfo()
     }
@@ -99,6 +109,7 @@ class LauncherActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         handler.removeCallbacks(clockRunnable)
+        handler.removeCallbacks(mediaPollRunnable)
     }
 
     private fun initViews() {
@@ -160,17 +171,40 @@ class LauncherActivity : AppCompatActivity() {
         appsList.adapter = adapter
     }
 
+    private fun setController(controllers: List<MediaController>) {
+        val ctrl = controllers.firstOrNull()
+        if (ctrl != currentController) {
+            currentController?.unregisterCallback(mediaCallback)
+            currentController = ctrl
+            currentController?.registerCallback(mediaCallback)
+            updateMusicInfo()
+        }
+    }
+
     private fun refreshMediaController() {
         try {
             val msm = getSystemService(MEDIA_SESSION_SERVICE) as MediaSessionManager
-            val controllers = msm.getActiveSessions(null)
-            currentController?.unregisterCallback(mediaCallback)
-            currentController = controllers.firstOrNull()
-            currentController?.registerCallback(mediaCallback)
+            val cpn = ComponentName(this, MediaNotificationListenerService::class.java)
+            var controllers = msm.getActiveSessions(cpn)
+            if (controllers.isEmpty()) {
+                controllers = msm.getActiveSessions(null)
+            }
+            setController(controllers)
+        } catch (_: Exception) { }
+    }
+
+    private fun registerSessionListener() {
+        try {
+            val msm = getSystemService(MEDIA_SESSION_SERVICE) as MediaSessionManager
+            activeSessionsListener = MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
+                setController(controllers)
+            }
+            msm.addOnActiveSessionsChangedListener(activeSessionsListener, null)
         } catch (_: Exception) { }
     }
 
     private fun setupMediaSession() {
+        registerSessionListener()
         refreshMediaController()
         updateMusicInfo()
 
@@ -332,6 +366,10 @@ class LauncherActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         currentController?.unregisterCallback(mediaCallback)
+        try {
+            val msm = getSystemService(MEDIA_SESSION_SERVICE) as MediaSessionManager
+            activeSessionsListener?.let { msm.removeOnActiveSessionsChangedListener(it) }
+        } catch (_: Exception) { }
         stopAlarm()
     }
 
