@@ -182,15 +182,35 @@ class LauncherActivity : AppCompatActivity() {
     }
 
     private fun refreshMediaController() {
+        var found = false
         try {
             val msm = getSystemService(MEDIA_SESSION_SERVICE) as MediaSessionManager
-            val cpn = ComponentName(this, MediaNotificationListenerService::class.java)
-            var controllers = msm.getActiveSessions(cpn)
-            if (controllers.isEmpty()) {
-                controllers = msm.getActiveSessions(null)
+            val controllers = msm.getActiveSessions(null)
+            if (controllers.isNotEmpty()) {
+                setController(controllers)
+                found = true
             }
-            setController(controllers)
         } catch (_: Exception) { }
+        if (!found) {
+            try {
+                val msm = getSystemService(MEDIA_SESSION_SERVICE) as MediaSessionManager
+                val cpn = ComponentName(this, MediaNotificationListenerService::class.java)
+                val controllers = msm.getActiveSessions(cpn)
+                if (controllers.isNotEmpty()) {
+                    setController(controllers)
+                    found = true
+                }
+            } catch (_: Exception) { }
+        }
+        if (!found) {
+            val notifCtrl = MediaNotificationListenerService.activeController
+            if (notifCtrl != null && notifCtrl != currentController) {
+                currentController?.unregisterCallback(mediaCallback)
+                currentController = notifCtrl
+                currentController?.registerCallback(mediaCallback)
+                updateMusicInfo()
+            }
+        }
     }
 
     private fun registerSessionListener() {
@@ -228,14 +248,15 @@ class LauncherActivity : AppCompatActivity() {
             return
         }
         val metadata = controller.metadata
-        if (metadata != null) {
+        val state = controller.playbackState
+        val hasMedia = metadata != null || state != null
+
+        if (hasMedia) {
             musicPlayer.visibility = View.VISIBLE
-            tvTrackTitle.text = metadata.getString(android.media.MediaMetadata.METADATA_KEY_TITLE) ?: "Unknown"
-            tvTrackArtist.text = metadata.getString(android.media.MediaMetadata.METADATA_KEY_ARTIST) ?: ""
-            val state = controller.playbackState
+            tvTrackTitle.text = metadata?.getString(android.media.MediaMetadata.METADATA_KEY_TITLE) ?: "Sin reproducción"
+            tvTrackArtist.text = metadata?.getString(android.media.MediaMetadata.METADATA_KEY_ARTIST) ?: ""
             isMusicPlaying = state?.state == PlaybackState.STATE_PLAYING
-            val icon = if (isMusicPlaying) R.drawable.ic_pause else R.drawable.ic_play
-            btnPlayPause.setImageResource(icon)
+            btnPlayPause.setImageResource(if (isMusicPlaying) R.drawable.ic_pause else R.drawable.ic_play)
         } else {
             musicPlayer.visibility = View.GONE
             isMusicPlaying = false
