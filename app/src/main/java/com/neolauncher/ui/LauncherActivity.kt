@@ -3,15 +3,18 @@ package com.neolauncher.ui
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
@@ -242,24 +245,49 @@ class LauncherActivity : AppCompatActivity() {
     }
 
     private fun updateMusicInfo() {
-        val controller = currentController ?: run {
-            musicPlayer.visibility = View.GONE
-            isMusicPlaying = false
-            return
-        }
-        val metadata = controller.metadata
-        val state = controller.playbackState
-        val hasMedia = metadata != null || state != null
+        val controller = currentController
 
-        if (hasMedia) {
+        if (controller != null) {
+            val metadata = controller.metadata
+            val state = controller.playbackState
+            val hasMedia = metadata != null || state != null
+            if (hasMedia) {
+                musicPlayer.visibility = View.VISIBLE
+                tvTrackTitle.text = metadata?.getString(android.media.MediaMetadata.METADATA_KEY_TITLE) ?: "Sin información"
+                tvTrackArtist.text = metadata?.getString(android.media.MediaMetadata.METADATA_KEY_ARTIST) ?: ""
+                isMusicPlaying = state?.state == PlaybackState.STATE_PLAYING
+                btnPlayPause.setImageResource(if (isMusicPlaying) R.drawable.ic_pause else R.drawable.ic_play)
+                return
+            }
+        }
+
+        val am = getSystemService(AUDIO_SERVICE) as AudioManager
+        if (am.isMusicActive) {
             musicPlayer.visibility = View.VISIBLE
-            tvTrackTitle.text = metadata?.getString(android.media.MediaMetadata.METADATA_KEY_TITLE) ?: "Sin reproducción"
-            tvTrackArtist.text = metadata?.getString(android.media.MediaMetadata.METADATA_KEY_ARTIST) ?: ""
-            isMusicPlaying = state?.state == PlaybackState.STATE_PLAYING
-            btnPlayPause.setImageResource(if (isMusicPlaying) R.drawable.ic_pause else R.drawable.ic_play)
+            tvTrackTitle.text = "Reproduciendo..."
+            tvTrackArtist.text = ""
+            isMusicPlaying = true
+            btnPlayPause.setImageResource(R.drawable.ic_pause)
+            showNotificationHint()
         } else {
             musicPlayer.visibility = View.GONE
             isMusicPlaying = false
+        }
+    }
+
+    private fun showNotificationHint() {
+        val enabled = Settings.Secure.getString(
+            contentResolver,
+            "enabled_notification_listeners"
+        )?.contains("${packageName}/.ui.MediaNotificationListenerService") == true
+        if (enabled) return
+
+        btnOpenFocus.apply {
+            text = "notificaciones"
+            setTextColor(0xFF8AB4F8.toInt())
+            setOnClickListener {
+                startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+            }
         }
     }
 
