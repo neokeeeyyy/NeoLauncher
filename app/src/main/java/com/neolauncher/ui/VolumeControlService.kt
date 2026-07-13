@@ -1,9 +1,13 @@
 package com.neolauncher.ui
 
 import android.accessibilityservice.AccessibilityService
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.media.AudioManager
 import android.os.Build
+import android.util.Log
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.WindowManager
@@ -17,19 +21,31 @@ class VolumeControlService : AccessibilityService() {
     private var currentStream = AudioManager.STREAM_MUSIC
     private var dismissRunnable: Runnable? = null
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var lastVolumeChange = 0L
 
-    private val streams = intArrayOf(
-        AudioManager.STREAM_MUSIC,
-        AudioManager.STREAM_RING,
-        AudioManager.STREAM_ALARM,
-        AudioManager.STREAM_NOTIFICATION,
-        AudioManager.STREAM_SYSTEM
-    )
+    private val volumeReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == AudioManager.VOLUME_CHANGED_ACTION) {
+                val stream = intent.getIntExtra(AudioManager.EXTRA_VOLUME_STREAM_TYPE, -1)
+                if (stream != -1) currentStream = stream
+                val now = System.currentTimeMillis()
+                if (now - lastVolumeChange > 300) {
+                    lastVolumeChange = now
+                    showOverlay()
+                } else {
+                    updateOverlay()
+                    resetDismiss()
+                }
+            }
+        }
+    }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        val filter = IntentFilter(AudioManager.VOLUME_CHANGED_ACTION)
+        registerReceiver(volumeReceiver, filter)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
@@ -39,15 +55,9 @@ class VolumeControlService : AccessibilityService() {
     override fun onKeyEvent(event: KeyEvent): Boolean {
         if (event.action != KeyEvent.ACTION_DOWN) return false
         when (event.keyCode) {
-            KeyEvent.KEYCODE_VOLUME_UP -> {
-                audioManager.adjustStreamVolume(currentStream, AudioManager.ADJUST_RAISE, 0)
+            KeyEvent.KEYCODE_VOLUME_UP, KeyEvent.KEYCODE_VOLUME_DOWN -> {
                 showOverlay()
-                return true
-            }
-            KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                audioManager.adjustStreamVolume(currentStream, AudioManager.ADJUST_LOWER, 0)
-                showOverlay()
-                return true
+                return super.onKeyEvent(event)
             }
         }
         return false
@@ -59,6 +69,7 @@ class VolumeControlService : AccessibilityService() {
         if (overlayView == null) {
             overlayView = VolumeOverlayView(this).apply {
                 setStreamChangedCallback { dir ->
+                    val streams = getStreamList()
                     val idx = streams.indexOf(currentStream)
                     var newIdx = (idx + dir) % streams.size
                     if (newIdx < 0) newIdx += streams.size
@@ -97,6 +108,16 @@ class VolumeControlService : AccessibilityService() {
         resetDismiss()
     }
 
+    private fun getStreamList(): IntArray {
+        return intArrayOf(
+            AudioManager.STREAM_MUSIC,
+            AudioManager.STREAM_RING,
+            AudioManager.STREAM_ALARM,
+            AudioManager.STREAM_NOTIFICATION,
+            AudioManager.STREAM_SYSTEM
+        )
+    }
+
     private fun resetDismiss() {
         removeDismiss()
         val r = Runnable { dismissOverlay() }
@@ -126,6 +147,7 @@ class VolumeControlService : AccessibilityService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        try { unregisterReceiver(volumeReceiver) } catch (_: Exception) {}
         removeDismiss()
         dismissOverlay()
     }
