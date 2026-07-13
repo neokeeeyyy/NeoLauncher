@@ -1,12 +1,13 @@
 package com.neolauncher.ui
 
 import android.accessibilityservice.AccessibilityService
-import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
+import android.database.ContentObserver
 import android.media.AudioManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.WindowManager
@@ -19,23 +20,16 @@ class VolumeControlService : AccessibilityService() {
     private var overlayView: VolumeOverlayView? = null
     private var currentStream = AudioManager.STREAM_MUSIC
     private var dismissRunnable: Runnable? = null
-    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
-    private var lastVolumeChange = 0L
+    private val handler = Handler(Looper.getMainLooper())
+    private var lastVolumeValues = mutableMapOf<Int, Int>()
+    private var debounceTime = 0L
 
-    private val volumeReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            if (intent.action == "android.media.VOLUME_CHANGED_ACTION") {
-                val stream = intent.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", -1)
-                if (stream != -1) currentStream = stream
-                val now = System.currentTimeMillis()
-                if (now - lastVolumeChange > 300) {
-                    lastVolumeChange = now
-                    showOverlay()
-                } else {
-                    updateOverlay()
-                    resetDismiss()
-                }
-            }
+    private val volumeObserver = object : ContentObserver(handler) {
+        override fun onChange(selfChange: Boolean) {
+            val now = System.currentTimeMillis()
+            if (now - debounceTime < 100) return
+            debounceTime = now
+            onVolumeChanged()
         }
     }
 
@@ -43,8 +37,45 @@ class VolumeControlService : AccessibilityService() {
         super.onServiceConnected()
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
-        val filter = IntentFilter("android.media.VOLUME_CHANGED_ACTION")
-        registerReceiver(volumeReceiver, filter)
+
+        saveCurrentVolumes()
+        for (stream in getStreamList()) {
+            contentResolver.registerContentObserver(
+                Settings.System.getUriFor(getVolumeSetting(stream)),
+                false,
+                volumeObserver
+            )
+        }
+    }
+
+    private fun getVolumeSetting(stream: Int): String {
+        return when (stream) {
+            AudioManager.STREAM_MUSIC -> Settings.System.VOLUME_MUSIC
+            AudioManager.STREAM_RING -> Settings.System.VOLUME_RING
+            AudioManager.STREAM_ALARM -> Settings.System.VOLUME_ALARM
+            AudioManager.STREAM_NOTIFICATION -> Settings.System.VOLUME_NOTIFICATION
+            AudioManager.STREAM_SYSTEM -> Settings.System.VOLUME_SYSTEM
+            else -> Settings.System.VOLUME_MUSIC
+        }
+    }
+
+    private fun saveCurrentVolumes() {
+        for (stream in getStreamList()) {
+            lastVolumeValues[stream] = audioManager.getStreamVolume(stream)
+        }
+    }
+
+    private fun onVolumeChanged() {
+        for (stream in getStreamList()) {
+            val cur = audioManager.getStreamVolume(stream)
+            val prev = lastVolumeValues[stream] ?: cur
+            if (cur != prev) {
+                currentStream = stream
+                lastVolumeValues[stream] = cur
+                showOverlay()
+                return
+            }
+        }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
@@ -56,10 +87,9 @@ class VolumeControlService : AccessibilityService() {
         when (event.keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP, KeyEvent.KEYCODE_VOLUME_DOWN -> {
                 showOverlay()
-                return super.onKeyEvent(event)
             }
         }
-        return false
+        return super.onKeyEvent(event)
     }
 
     private fun showOverlay() {
@@ -146,7 +176,7 @@ class VolumeControlService : AccessibilityService() {
 
     override fun onDestroy() {
         super.onDestroy()
-        try { unregisterReceiver(volumeReceiver) } catch (_: Exception) {}
+        try { contentResolver.unregisterContentObserver(volumeObserver) } catch (_: Exception) {}
         removeDismiss()
         dismissOverlay()
     }
