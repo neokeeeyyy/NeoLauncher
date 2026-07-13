@@ -16,16 +16,16 @@
             android:id="@+id/clockFlipper"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:inAnimation="@anim/slide_in_right"
-            android:outAnimation="@anim/slide_out_left"
             android:layout_marginBottom="12dp"
-            android:measureAllChildren="false">
+            android:measureAllChildren="true"
+            android:minHeight="100dp">
 
             <!-- Page 0: Clock -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:minHeight="100dp">
 
                 <TextView
                     android:id="@+id/tvClock"
@@ -54,6 +54,7 @@
                 android:id="@+id/musicPlayer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:minHeight="100dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:paddingVertical="6dp"
@@ -63,11 +64,11 @@
 
                 <ImageView
                     android:id="@+id/ivAppIcon"
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
                     android:scaleType="fitCenter"
                     android:padding="2dp"
-                    android:layout_marginEnd="10dp" />
+                    android:layout_marginEnd="12dp" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -77,21 +78,21 @@
 
                     <TextView
                         android:id="@+id/tvTrackTitle"
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text=""
                         android:textColor="#B3FFFFFF"
-                        android:textSize="13sp"
+                        android:textSize="15sp"
                         android:singleLine="true"
                         android:ellipsize="end" />
 
                     <TextView
                         android:id="@+id/tvTrackArtist"
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text=""
                         android:textColor="#66FFFFFF"
-                        android:textSize="11sp"
+                        android:textSize="13sp"
                         android:singleLine="true"
                         android:ellipsize="end" />
 
@@ -99,26 +100,26 @@
 
                 <ImageView
                     android:id="@+id/btnPrev"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
                     android:src="@drawable/ic_skip_previous"
                     android:tint="#66FFFFFF"
                     android:padding="2dp"
-                    android:layout_marginEnd="6dp" />
+                    android:layout_marginEnd="8dp" />
 
                 <ImageView
                     android:id="@+id/btnPlayPause"
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
                     android:src="@drawable/ic_play"
                     android:tint="#FFFFFFFF"
                     android:padding="2dp"
-                    android:layout_marginEnd="6dp" />
+                    android:layout_marginEnd="8dp" />
 
                 <ImageView
                     android:id="@+id/btnNext"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
                     android:src="@drawable/ic_skip_next"
                     android:tint="#66FFFFFF"
                     android:padding="2dp" />

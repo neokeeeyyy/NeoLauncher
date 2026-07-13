@@ -180,14 +180,22 @@ class LauncherActivity : AppCompatActivity() {
                     val dx = event.x - touchStartX
                     val dy = event.y - touchStartY
                     if (kotlin.math.abs(dx) > 120 && kotlin.math.abs(dx) > kotlin.math.abs(dy) * 2) {
-                        if (dx < 0 && clockFlipper.displayedChild == 0 && hasMusic) {
+                        if (dx < 0) {
                             clockFlipper.setInAnimation(this, R.anim.slide_in_right)
                             clockFlipper.setOutAnimation(this, R.anim.slide_out_left)
-                            clockFlipper.showNext()
-                        } else if (dx > 0 && clockFlipper.displayedChild == 1) {
+                            if (clockFlipper.displayedChild == 0 && hasMusic) {
+                                clockFlipper.showNext()
+                            } else if (clockFlipper.displayedChild == 1) {
+                                clockFlipper.showPrevious()
+                            }
+                        } else {
                             clockFlipper.setInAnimation(this, R.anim.slide_in_left)
                             clockFlipper.setOutAnimation(this, R.anim.slide_out_right)
-                            clockFlipper.showPrevious()
+                            if (clockFlipper.displayedChild == 1) {
+                                clockFlipper.showPrevious()
+                            } else if (clockFlipper.displayedChild == 0 && hasMusic) {
+                                clockFlipper.showNext()
+                            }
                         }
                     } else if (kotlin.math.abs(dx) < 30 && kotlin.math.abs(dy) < 30) {
                         showFocusMode()
