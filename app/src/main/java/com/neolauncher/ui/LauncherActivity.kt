@@ -10,17 +10,16 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.view.View
 import android.view.WindowManager
+import android.view.animation.OvershootInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.SeekBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -37,7 +36,6 @@ class LauncherActivity : AppCompatActivity() {
     private lateinit var musicPlayer: LinearLayout
     private lateinit var tvTrackTitle: TextView
     private lateinit var tvTrackArtist: TextView
-    private lateinit var seekBar: SeekBar
     private lateinit var btnPlayPause: ImageView
     private lateinit var btnPrev: ImageView
     private lateinit var btnNext: ImageView
@@ -50,13 +48,12 @@ class LauncherActivity : AppCompatActivity() {
     private lateinit var btnLongBreak: TextView
     private lateinit var btnStartFocus: TextView
     private lateinit var btnResetFocus: TextView
-    private lateinit var btnOpenFocus: TextView
 
     private val handler = Handler(Looper.getMainLooper())
     private var currentController: MediaController? = null
     private var isMusicPlaying = false
-    private var clockSmall = false
     private var activeSessionsListener: MediaSessionManager.OnActiveSessionsChangedListener? = null
+    private var notificationRedirected = false
 
     // Focus mode
     private var focusDuration = 25 * 60 * 1000L
@@ -121,7 +118,6 @@ class LauncherActivity : AppCompatActivity() {
         musicPlayer = findViewById(R.id.musicPlayer)
         tvTrackTitle = findViewById(R.id.tvTrackTitle)
         tvTrackArtist = findViewById(R.id.tvTrackArtist)
-        seekBar = findViewById(R.id.seekBar)
         btnPlayPause = findViewById(R.id.btnPlayPause)
         btnPrev = findViewById(R.id.btnPrev)
         btnNext = findViewById(R.id.btnNext)
@@ -134,24 +130,16 @@ class LauncherActivity : AppCompatActivity() {
         btnLongBreak = findViewById(R.id.btnLongBreak)
         btnStartFocus = findViewById(R.id.btnStartFocus)
         btnResetFocus = findViewById(R.id.btnResetFocus)
-        btnOpenFocus = findViewById(R.id.btnOpenFocus)
     }
 
     private fun setupClock() {
         handler.post(clockRunnable)
+        tvClock.setOnClickListener { showFocusMode() }
     }
 
     private fun updateClock() {
-        val showSeconds = isMusicPlaying
-        val format = if (showSeconds) "HH:mm:ss" else "HH:mm"
-        val sdf = SimpleDateFormat(format, Locale.getDefault())
+        val sdf = SimpleDateFormat("h:mm a", Locale("es"))
         tvClock.text = sdf.format(Date())
-
-        if (showSeconds != clockSmall) {
-            clockSmall = showSeconds
-            tvClock.animate().scaleX(if (showSeconds) 0.5f else 1f)
-                .scaleY(if (showSeconds) 0.5f else 1f).setDuration(300).start()
-        }
 
         val dateSdf = SimpleDateFormat("EEEE d 'de' MMMM", Locale("es"))
         tvDate.text = dateSdf.format(Date())
@@ -268,27 +256,22 @@ class LauncherActivity : AppCompatActivity() {
             tvTrackArtist.text = ""
             isMusicPlaying = true
             btnPlayPause.setImageResource(R.drawable.ic_pause)
-            showNotificationHint()
+            redirectToNotificationSettings()
         } else {
             musicPlayer.visibility = View.GONE
             isMusicPlaying = false
         }
     }
 
-    private fun showNotificationHint() {
+    private fun redirectToNotificationSettings() {
+        if (notificationRedirected) return
         val enabled = Settings.Secure.getString(
             contentResolver,
             "enabled_notification_listeners"
         )?.contains("${packageName}/.ui.MediaNotificationListenerService") == true
         if (enabled) return
-
-        btnOpenFocus.apply {
-            text = "notificaciones"
-            setTextColor(0xFF8AB4F8.toInt())
-            setOnClickListener {
-                startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-            }
-        }
+        notificationRedirected = true
+        startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
     }
 
     // ── Focus Mode ──
@@ -313,7 +296,6 @@ class LauncherActivity : AppCompatActivity() {
             btnShortBreak.background = null
         }
 
-        btnOpenFocus.setOnClickListener { showFocusMode() }
         btnStartFocus.setOnClickListener { toggleFocus() }
         btnResetFocus.setOnClickListener { resetFocus() }
         btnCloseFocus.setOnClickListener { hideFocusMode() }
@@ -321,7 +303,17 @@ class LauncherActivity : AppCompatActivity() {
 
     fun showFocusMode() {
         stopAlarm()
+
+        focusOverlay.scaleX = 0f
+        focusOverlay.scaleY = 0f
         focusOverlay.visibility = View.VISIBLE
+        focusOverlay.animate()
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(400)
+            .setInterpolator(OvershootInterpolator(2f))
+            .start()
+
         resetFocus()
         updateFocusTabUI()
     }
@@ -329,7 +321,9 @@ class LauncherActivity : AppCompatActivity() {
     private fun hideFocusMode() {
         stopAlarm()
         isFocusRunning = false
-        focusOverlay.visibility = View.GONE
+        focusOverlay.animate().scaleX(0f).scaleY(0f).setDuration(200).withEndAction {
+            focusOverlay.visibility = View.GONE
+        }.start()
     }
 
     private fun toggleFocus() {
