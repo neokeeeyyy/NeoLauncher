@@ -4,107 +4,120 @@
     android:layout_height="match_parent"
     android:background="#FF000000">
 
-    <!-- Main Content -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:gravity="center_horizontal"
-        android:paddingTop="80dp"
-        android:paddingHorizontal="32dp">
+        android:paddingTop="48dp"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp">
 
-        <!-- Clock (clickeable para Focus Mode) -->
-        <TextView
-            android:id="@+id/tvClock"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="00:00"
-            android:textColor="#FFFFFFFF"
-            android:textSize="106sp"
-            android:fontFamily="sans-serif-thin"
-            android:clickable="true"
-            android:focusable="true"
-            android:layout_marginBottom="2dp" />
-
-        <!-- Date (pegada al reloj) -->
-        <TextView
-            android:id="@+id/tvDate"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text=""
-            android:textColor="#66FFFFFF"
-            android:textSize="18sp"
-            android:fontFamily="sans-serif-light"
-            android:layout_marginBottom="12dp" />
-
-        <!-- Music Player (compacto) -->
-        <LinearLayout
-            android:id="@+id/musicPlayer"
+        <!-- ViewFlipper: page 0 = clock, page 1 = player -->
+        <ViewFlipper
+            android:id="@+id/clockFlipper"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:visibility="gone"
-            android:layout_marginBottom="8dp"
-            android:paddingVertical="4dp"
-            android:paddingHorizontal="8dp"
-            android:background="#1AFFFFFF">
+            android:inAnimation="@anim/slide_in_right"
+            android:outAnimation="@anim/slide_out_left"
+            android:layout_marginBottom="12dp">
 
+            <!-- Page 0: Clock -->
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:orientation="vertical">
 
                 <TextView
-                    android:id="@+id/tvTrackTitle"
+                    android:id="@+id/tvClock"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text=""
-                    android:textColor="#B3FFFFFF"
-                    android:textSize="13sp"
-                    android:singleLine="true"
-                    android:ellipsize="end" />
+                    android:text="00:00"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="72sp"
+                    android:fontFamily="sans-serif-thin"
+                    android:clickable="true"
+                    android:focusable="true" />
 
                 <TextView
-                    android:id="@+id/tvTrackArtist"
+                    android:id="@+id/tvDate"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text=""
                     android:textColor="#66FFFFFF"
-                    android:textSize="11sp"
-                    android:singleLine="true"
-                    android:ellipsize="end" />
+                    android:textSize="14sp"
+                    android:fontFamily="sans-serif-light" />
 
             </LinearLayout>
 
-            <ImageView
-                android:id="@+id/btnPrev"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:src="@drawable/ic_skip_previous"
-                android:tint="#66FFFFFF"
-                android:padding="2dp"
-                android:layout_marginEnd="8dp" />
+            <!-- Page 1: Music Player -->
+            <LinearLayout
+                android:id="@+id/musicPlayer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingVertical="4dp"
+                android:paddingStart="4dp"
+                android:paddingEnd="8dp"
+                android:background="#1AFFFFFF">
 
-            <ImageView
-                android:id="@+id/btnPlayPause"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:src="@drawable/ic_play"
-                android:tint="#FFFFFFFF"
-                android:padding="2dp"
-                android:layout_marginEnd="8dp" />
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
 
-            <ImageView
-                android:id="@+id/btnNext"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:src="@drawable/ic_skip_next"
-                android:tint="#66FFFFFF"
-                android:padding="2dp" />
+                    <TextView
+                        android:id="@+id/tvTrackTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text=""
+                        android:textColor="#B3FFFFFF"
+                        android:textSize="13sp"
+                        android:singleLine="true"
+                        android:ellipsize="end" />
 
-        </LinearLayout>
+                    <TextView
+                        android:id="@+id/tvTrackArtist"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text=""
+                        android:textColor="#66FFFFFF"
+                        android:textSize="11sp"
+                        android:singleLine="true"
+                        android:ellipsize="end" />
+
+                </LinearLayout>
+
+                <ImageView
+                    android:id="@+id/btnPrev"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_skip_previous"
+                    android:tint="#66FFFFFF"
+                    android:padding="2dp"
+                    android:layout_marginEnd="8dp" />
+
+                <ImageView
+                    android:id="@+id/btnPlayPause"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:src="@drawable/ic_play"
+                    android:tint="#FFFFFFFF"
+                    android:padding="2dp"
+                    android:layout_marginEnd="8dp" />
+
+                <ImageView
+                    android:id="@+id/btnNext"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_skip_next"
+                    android:tint="#66FFFFFF"
+                    android:padding="2dp" />
+
+            </LinearLayout>
+
+        </ViewFlipper>
 
         <!-- App List -->
         <androidx.recyclerview.widget.RecyclerView
@@ -117,7 +130,7 @@
 
     </LinearLayout>
 
-    <!-- Focus Mode Overlay (popup animado) -->
+    <!-- Focus Mode Overlay -->
     <FrameLayout
         android:id="@+id/focusOverlay"
         android:layout_width="match_parent"
@@ -162,7 +175,6 @@
                 android:fontFamily="sans-serif-thin"
                 android:layout_marginBottom="48dp" />
 
-            <!-- Tab Selector -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -206,7 +218,6 @@
 
             </LinearLayout>
 
-            <!-- Controls -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

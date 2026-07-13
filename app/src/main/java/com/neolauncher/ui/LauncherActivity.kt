@@ -1,6 +1,8 @@
 package com.neolauncher.ui
 
+import android.app.NotificationManager
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.AudioManager
@@ -10,10 +12,13 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.view.GestureDetector
+import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.animation.OvershootInterpolator
@@ -21,6 +26,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.ViewFlipper
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -33,6 +39,7 @@ class LauncherActivity : AppCompatActivity() {
 
     private lateinit var tvClock: TextView
     private lateinit var tvDate: TextView
+    private lateinit var clockFlipper: ViewFlipper
     private lateinit var musicPlayer: LinearLayout
     private lateinit var tvTrackTitle: TextView
     private lateinit var tvTrackArtist: TextView
@@ -54,6 +61,7 @@ class LauncherActivity : AppCompatActivity() {
     private var isMusicPlaying = false
     private var activeSessionsListener: MediaSessionManager.OnActiveSessionsChangedListener? = null
     private var notificationRedirected = false
+    private var didFirstLaunch = false
 
     // Focus mode
     private var focusDuration = 25 * 60 * 1000L
@@ -61,6 +69,7 @@ class LauncherActivity : AppCompatActivity() {
     private var isFocusRunning = false
     private var focusTab = 0
     private var mediaPlayer: MediaPlayer? = null
+    private var dndActive = false
 
     private val clockRunnable = object : Runnable {
         override fun run() {
@@ -93,9 +102,11 @@ class LauncherActivity : AppCompatActivity() {
 
         initViews()
         setupClock()
+        setupSwipe()
         setupAppList()
         setupMediaSession()
         setupFocusMode()
+        checkFirstLaunch()
     }
 
     override fun onResume() {
@@ -115,6 +126,7 @@ class LauncherActivity : AppCompatActivity() {
     private fun initViews() {
         tvClock = findViewById(R.id.tvClock)
         tvDate = findViewById(R.id.tvDate)
+        clockFlipper = findViewById(R.id.clockFlipper)
         musicPlayer = findViewById(R.id.musicPlayer)
         tvTrackTitle = findViewById(R.id.tvTrackTitle)
         tvTrackArtist = findViewById(R.id.tvTrackArtist)
@@ -132,15 +144,58 @@ class LauncherActivity : AppCompatActivity() {
         btnResetFocus = findViewById(R.id.btnResetFocus)
     }
 
+    private fun checkFirstLaunch() {
+        val prefs = getSharedPreferences("launcher", Context.MODE_PRIVATE)
+        if (prefs.getBoolean("first_launch_done", false)) return
+        prefs.edit().putBoolean("first_launch_done", true).apply()
+        didFirstLaunch = true
+
+        // Request notification permission (Android 13+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 0)
+        }
+
+        // Open notification listener settings
+        handler.postDelayed({
+            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        }, 500)
+    }
+
     private fun setupClock() {
         handler.post(clockRunnable)
         tvClock.setOnClickListener { showFocusMode() }
     }
 
+    private fun setupSwipe() {
+        val gd = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onFling(e1: MotionEvent?, e2: MotionEvent?, velocityX: Float, velocityY: Float): Boolean {
+                if (e1 == null || e2 == null) return false
+                val dx = e2.x - e1.x
+                if (kotlin.math.abs(dx) > kotlin.math.abs(e2.y - e1.y) && kotlin.math.abs(dx) > 100) {
+                    if (dx < 0 && clockFlipper.displayedChild == 0) {
+                        // Swipe left → show player
+                        if (musicPlayer.visibility == View.VISIBLE) {
+                            clockFlipper.setInAnimation(this@LauncherActivity, R.anim.slide_in_right)
+                            clockFlipper.setOutAnimation(this@LauncherActivity, R.anim.slide_out_left)
+                            clockFlipper.showNext()
+                        }
+                    } else if (dx > 0 && clockFlipper.displayedChild == 1) {
+                        // Swipe right → show clock
+                        clockFlipper.setInAnimation(this@LauncherActivity, R.anim.slide_in_left)
+                        clockFlipper.setOutAnimation(this@LauncherActivity, R.anim.slide_out_right)
+                        clockFlipper.showPrevious()
+                    }
+                    return true
+                }
+                return false
+            }
+        })
+        clockFlipper.setOnTouchListener { _, event -> gd.onTouchEvent(event) }
+    }
+
     private fun updateClock() {
         val sdf = SimpleDateFormat("h:mm a", Locale("es"))
         tvClock.text = sdf.format(Date())
-
         val dateSdf = SimpleDateFormat("EEEE d 'de' MMMM", Locale("es"))
         tvDate.text = dateSdf.format(Date())
     }
@@ -222,11 +277,8 @@ class LauncherActivity : AppCompatActivity() {
 
         btnPlayPause.setOnClickListener {
             val controller = currentController ?: return@setOnClickListener
-            if (isMusicPlaying) {
-                controller.transportControls.pause()
-            } else {
-                controller.transportControls.play()
-            }
+            if (isMusicPlaying) controller.transportControls.pause()
+            else controller.transportControls.play()
         }
         btnPrev.setOnClickListener { currentController?.transportControls?.skipToPrevious() }
         btnNext.setOnClickListener { currentController?.transportControls?.skipToNext() }
@@ -256,22 +308,15 @@ class LauncherActivity : AppCompatActivity() {
             tvTrackArtist.text = ""
             isMusicPlaying = true
             btnPlayPause.setImageResource(R.drawable.ic_pause)
-            redirectToNotificationSettings()
         } else {
             musicPlayer.visibility = View.GONE
             isMusicPlaying = false
+            if (clockFlipper.displayedChild == 1) {
+                clockFlipper.setInAnimation(this, R.anim.slide_in_left)
+                clockFlipper.setOutAnimation(this, R.anim.slide_out_right)
+                clockFlipper.showPrevious()
+            }
         }
-    }
-
-    private fun redirectToNotificationSettings() {
-        if (notificationRedirected) return
-        val enabled = Settings.Secure.getString(
-            contentResolver,
-            "enabled_notification_listeners"
-        )?.contains("${packageName}/.ui.MediaNotificationListenerService") == true
-        if (enabled) return
-        notificationRedirected = true
-        startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
     }
 
     // ── Focus Mode ──
@@ -303,17 +348,14 @@ class LauncherActivity : AppCompatActivity() {
 
     fun showFocusMode() {
         stopAlarm()
-
         focusOverlay.scaleX = 0f
         focusOverlay.scaleY = 0f
         focusOverlay.visibility = View.VISIBLE
         focusOverlay.animate()
-            .scaleX(1f)
-            .scaleY(1f)
+            .scaleX(1f).scaleY(1f)
             .setDuration(400)
             .setInterpolator(OvershootInterpolator(2f))
             .start()
-
         resetFocus()
         updateFocusTabUI()
     }
@@ -321,6 +363,7 @@ class LauncherActivity : AppCompatActivity() {
     private fun hideFocusMode() {
         stopAlarm()
         isFocusRunning = false
+        disableDnd()
         focusOverlay.animate().scaleX(0f).scaleY(0f).setDuration(200).withEndAction {
             focusOverlay.visibility = View.GONE
         }.start()
@@ -330,9 +373,11 @@ class LauncherActivity : AppCompatActivity() {
         if (isFocusRunning) {
             isFocusRunning = false
             btnStartFocus.text = getString(R.string.start)
+            disableDnd()
         } else {
             isFocusRunning = true
             btnStartFocus.text = getString(R.string.pause)
+            enableDnd()
             runFocusTimer()
         }
     }
@@ -348,6 +393,7 @@ class LauncherActivity : AppCompatActivity() {
                 } else if (focusTimeRemaining <= 0) {
                     isFocusRunning = false
                     btnStartFocus.text = getString(R.string.start)
+                    disableDnd()
                     playAlarm()
                 }
             }
@@ -376,6 +422,24 @@ class LauncherActivity : AppCompatActivity() {
         btnLongBreak.setBackgroundResource(if (focusTab == 2) R.drawable.bg_outline else 0)
     }
 
+    private fun enableDnd() {
+        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        if (nm.isNotificationPolicyAccessGranted) {
+            nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY)
+            dndActive = true
+        } else {
+            startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+        }
+    }
+
+    private fun disableDnd() {
+        if (dndActive) {
+            val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
+            dndActive = false
+        }
+    }
+
     private fun playAlarm() {
         try {
             val alarmUri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
@@ -402,6 +466,12 @@ class LauncherActivity : AppCompatActivity() {
             hideFocusMode()
             return
         }
+        if (clockFlipper.displayedChild == 1) {
+            clockFlipper.setInAnimation(this, R.anim.slide_in_left)
+            clockFlipper.setOutAnimation(this, R.anim.slide_out_right)
+            clockFlipper.showPrevious()
+            return
+        }
         val intent = Intent(Intent.ACTION_MAIN)
         intent.addCategory(Intent.CATEGORY_HOME)
         startActivity(intent)
@@ -418,13 +488,13 @@ class LauncherActivity : AppCompatActivity() {
             } catch (_: Exception) { }
         }
         stopAlarm()
+        disableDnd()
     }
 
     class AppsAdapter(
         private val apps: List<android.content.pm.ApplicationInfo>,
         private val onItemClick: (android.content.pm.ApplicationInfo) -> Unit
     ) : RecyclerView.Adapter<AppsAdapter.ViewHolder>() {
-
         override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): ViewHolder {
             val tv = TextView(parent.context).apply {
                 layoutParams = RecyclerView.LayoutParams(
