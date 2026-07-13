@@ -28,7 +28,16 @@ class VolumeControlService : AccessibilityService() {
             val now = System.currentTimeMillis()
             if (now - debounceTime < 100) return
             debounceTime = now
-            onVolumeChanged()
+            for (stream in getStreamList()) {
+                val cur = audioManager.getStreamVolume(stream)
+                val prev = lastVolumeValues[stream] ?: cur
+                if (cur != prev) {
+                    currentStream = stream
+                    lastVolumeValues[stream] = cur
+                    showOverlay()
+                    return
+                }
+            }
         }
     }
 
@@ -37,44 +46,14 @@ class VolumeControlService : AccessibilityService() {
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-        saveCurrentVolumes()
-        for (stream in getStreamList()) {
-            contentResolver.registerContentObserver(
-                Settings.System.getUriFor(getVolumeSetting(stream)),
-                false,
-                volumeObserver
-            )
-        }
-    }
-
-    private fun getVolumeSetting(stream: Int): String {
-        return when (stream) {
-            AudioManager.STREAM_MUSIC -> "volume_music"
-            AudioManager.STREAM_RING -> "volume_ring"
-            AudioManager.STREAM_ALARM -> "volume_alarm"
-            AudioManager.STREAM_NOTIFICATION -> "volume_notification"
-            AudioManager.STREAM_SYSTEM -> "volume_system"
-            else -> "volume_music"
-        }
-    }
-
-    private fun saveCurrentVolumes() {
         for (stream in getStreamList()) {
             lastVolumeValues[stream] = audioManager.getStreamVolume(stream)
         }
-    }
-
-    private fun onVolumeChanged() {
-        for (stream in getStreamList()) {
-            val cur = audioManager.getStreamVolume(stream)
-            val prev = lastVolumeValues[stream] ?: cur
-            if (cur != prev) {
-                currentStream = stream
-                lastVolumeValues[stream] = cur
-                showOverlay()
-                return
-            }
-        }
+        contentResolver.registerContentObserver(
+            android.provider.Settings.System.CONTENT_URI,
+            true,
+            volumeObserver
+        )
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
