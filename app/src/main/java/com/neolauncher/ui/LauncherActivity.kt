@@ -17,7 +17,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
-import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
@@ -166,31 +165,31 @@ class LauncherActivity : AppCompatActivity() {
         tvClock.setOnClickListener { showFocusMode() }
     }
 
+    private var touchStartX = 0f
+
     private fun setupSwipe() {
-        val gd = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
-            override fun onFling(e1: MotionEvent?, e2: MotionEvent?, velocityX: Float, velocityY: Float): Boolean {
-                if (e1 == null || e2 == null) return false
-                val dx = e2.x - e1.x
-                if (kotlin.math.abs(dx) > kotlin.math.abs(e2.y - e1.y) && kotlin.math.abs(dx) > 100) {
-                    if (dx < 0 && clockFlipper.displayedChild == 0) {
-                        // Swipe left → show player
-                        if (musicPlayer.visibility == View.VISIBLE) {
-                            clockFlipper.setInAnimation(this@LauncherActivity, R.anim.slide_in_right)
-                            clockFlipper.setOutAnimation(this@LauncherActivity, R.anim.slide_out_left)
-                            clockFlipper.showNext()
+        clockFlipper.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> touchStartX = event.x
+                MotionEvent.ACTION_UP -> {
+                    val dx = event.x - touchStartX
+                    if (kotlin.math.abs(dx) > 120) {
+                        if (dx < 0 && clockFlipper.displayedChild == 0) {
+                            if (musicPlayer.visibility == View.VISIBLE) {
+                                clockFlipper.setInAnimation(this@LauncherActivity, R.anim.slide_in_right)
+                                clockFlipper.setOutAnimation(this@LauncherActivity, R.anim.slide_out_left)
+                                clockFlipper.showNext()
+                            }
+                        } else if (dx > 0 && clockFlipper.displayedChild == 1) {
+                            clockFlipper.setInAnimation(this@LauncherActivity, R.anim.slide_in_left)
+                            clockFlipper.setOutAnimation(this@LauncherActivity, R.anim.slide_out_right)
+                            clockFlipper.showPrevious()
                         }
-                    } else if (dx > 0 && clockFlipper.displayedChild == 1) {
-                        // Swipe right → show clock
-                        clockFlipper.setInAnimation(this@LauncherActivity, R.anim.slide_in_left)
-                        clockFlipper.setOutAnimation(this@LauncherActivity, R.anim.slide_out_right)
-                        clockFlipper.showPrevious()
                     }
-                    return true
                 }
-                return false
             }
-        })
-        clockFlipper.setOnTouchListener { _, event -> gd.onTouchEvent(event) }
+            false
+        }
     }
 
     private fun updateClock() {
