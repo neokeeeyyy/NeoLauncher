@@ -135,6 +135,25 @@
 
     </LinearLayout>
 
+    <!-- Task Switcher Overlay -->
+    <FrameLayout
+        android:id="@+id/taskSwitcherOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#CC000000"
+        android:visibility="gone"
+        android:clickable="true">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/taskList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:orientation="horizontal"
+            android:padding="16dp" />
+
+    </FrameLayout>
+
     <!-- Focus Mode Overlay -->
     <FrameLayout
         android:id="@+id/focusOverlay"

@@ -1,6 +1,7 @@
 package com.neolauncher.ui
 
 import android.app.NotificationManager
+import android.app.usage.UsageStatsManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -17,6 +18,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
@@ -25,6 +27,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import android.widget.ViewFlipper
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -33,6 +36,7 @@ import com.neolauncher.NeoLauncherApp
 import com.neolauncher.R
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.collections.HashSet
 
 class LauncherActivity : AppCompatActivity() {
 
@@ -55,6 +59,9 @@ class LauncherActivity : AppCompatActivity() {
     private lateinit var btnLongBreak: TextView
     private lateinit var btnStartFocus: TextView
     private lateinit var btnResetFocus: TextView
+    private lateinit var taskSwitcherOverlay: FrameLayout
+    private lateinit var taskList: RecyclerView
+    private var showingHidden = false
 
     private val handler = Handler(Looper.getMainLooper())
     private var currentController: MediaController? = null
@@ -107,7 +114,19 @@ class LauncherActivity : AppCompatActivity() {
         setupAppList()
         setupMediaSession()
         setupFocusMode()
+        setupTaskSwitcher()
         checkFirstLaunch()
+
+        if (intent?.action == TaskSwitcherService.ACTION_SHOW_TASKS) {
+            showTaskSwitcher()
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.action == TaskSwitcherService.ACTION_SHOW_TASKS) {
+            showTaskSwitcher()
+        }
     }
 
     override fun onResume() {
@@ -144,6 +163,8 @@ class LauncherActivity : AppCompatActivity() {
         btnLongBreak = findViewById(R.id.btnLongBreak)
         btnStartFocus = findViewById(R.id.btnStartFocus)
         btnResetFocus = findViewById(R.id.btnResetFocus)
+        taskSwitcherOverlay = findViewById(R.id.taskSwitcherOverlay)
+        taskList = findViewById(R.id.taskList)
     }
 
     private fun checkFirstLaunch() {
@@ -159,10 +180,23 @@ class LauncherActivity : AppCompatActivity() {
         handler.postDelayed({
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         }, 500)
+
+        handler.postDelayed({
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        }, 2000)
+
+        handler.postDelayed({
+            startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+        }, 3500)
     }
 
     private fun setupClock() {
         handler.post(clockRunnable)
+        tvDate.setOnClickListener {
+            showingHidden = !showingHidden
+            refreshAppList()
+            Toast.makeText(this, if (showingHidden) "Mostrando ocultas" else "Oculto ocultas", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private var touchStartX = 0f
@@ -216,12 +250,30 @@ class LauncherActivity : AppCompatActivity() {
         tvDate.text = dateSdf.format(Date())
     }
 
-    private fun setupAppList() {
+    private fun getHiddenApps(): Set<String> {
+        return getSharedPreferences("launcher", Context.MODE_PRIVATE)
+            .getStringSet("hidden_apps", emptySet()) ?: emptySet()
+    }
+
+    private fun toggleHiddenApp(packageName: String) {
+        val prefs = getSharedPreferences("launcher", Context.MODE_PRIVATE)
+        val hidden = HashSet(getHiddenApps())
+        if (hidden.contains(packageName)) hidden.remove(packageName) else hidden.add(packageName)
+        prefs.edit().putStringSet("hidden_apps", hidden).apply()
+        refreshAppList()
+        val msg = if (hidden.contains(packageName)) "Oculta" else "Visible"
+        Toast.makeText(this, "$msg: ${packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0))}", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun refreshAppList() {
+        val hidden = getHiddenApps()
         val apps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
             .filter { packageManager.getLaunchIntentForPackage(it.packageName) != null }
             .sortedBy { packageManager.getApplicationLabel(it).toString().lowercase() }
 
-        val adapter = AppsAdapter(apps) { appInfo ->
+        val filtered = if (showingHidden) apps else apps.filter { it.packageName !in hidden }
+
+        val adapter = AppsAdapter(filtered, hidden) { appInfo ->
             val intent = packageManager.getLaunchIntentForPackage(appInfo.packageName)
             if (intent != null) {
                 startActivity(intent)
@@ -229,8 +281,12 @@ class LauncherActivity : AppCompatActivity() {
             }
         }
 
-        appsList.layoutManager = LinearLayoutManager(this)
         appsList.adapter = adapter
+    }
+
+    private fun setupAppList() {
+        appsList.layoutManager = LinearLayoutManager(this)
+        refreshAppList()
     }
 
     private fun setController(controllers: List<MediaController>?) {
@@ -488,7 +544,102 @@ class LauncherActivity : AppCompatActivity() {
         mediaPlayer = null
     }
 
+    // ── Task Switcher ──
+
+    private fun setupTaskSwitcher() {
+        taskSwitcherOverlay.setOnClickListener { hideTaskSwitcher() }
+        taskList.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+    }
+
+    private fun getRecentApps(): List<android.content.pm.ApplicationInfo> {
+        val recent = mutableListOf<android.content.pm.ApplicationInfo>()
+        try {
+            val usm = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
+            val cal = Calendar.getInstance()
+            cal.add(Calendar.HOUR_OF_DAY, -24)
+            val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, cal.timeInMillis, System.currentTimeMillis())
+            val sorted = stats.filter { it.lastTimeUsed > 0 }
+                .sortedByDescending { it.lastTimeUsed }
+                .map { it.packageName }
+                .distinct()
+                .filter { it != packageName }
+            for (pkg in sorted) {
+                try {
+                    recent.add(packageManager.getApplicationInfo(pkg, 0))
+                    if (recent.size >= 8) break
+                } catch (_: Exception) {}
+            }
+        } catch (_: Exception) {}
+        return recent
+    }
+
+    private fun showTaskSwitcher() {
+        val recent = getRecentApps()
+        if (recent.isEmpty()) {
+            Toast.makeText(this, "Sin apps recientes", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val adapter = RecentAppsAdapter(recent) { info ->
+            hideTaskSwitcher()
+            val intent = packageManager.getLaunchIntentForPackage(info.packageName)
+            if (intent != null) startActivity(intent)
+        }
+        taskList.adapter = adapter
+        taskSwitcherOverlay.visibility = View.VISIBLE
+        taskSwitcherOverlay.bringToFront()
+    }
+
+    private fun hideTaskSwitcher() {
+        taskSwitcherOverlay.visibility = View.GONE
+    }
+
+    class RecentAppsAdapter(
+        private val apps: List<android.content.pm.ApplicationInfo>,
+        private val onItemClick: (android.content.pm.ApplicationInfo) -> Unit
+    ) : RecyclerView.Adapter<RecentAppsAdapter.ViewHolder>() {
+        override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): ViewHolder {
+            val card = LinearLayout(parent.context).apply {
+                layoutParams = RecyclerView.LayoutParams(200, RecyclerView.LayoutParams.WRAP_CONTENT)
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                setPadding(8, 16, 8, 16)
+                setBackgroundColor(0x33FFFFFF.toInt())
+            }
+            val icon = ImageView(parent.context).apply {
+                layoutParams = LinearLayout.LayoutParams(48, 48)
+                scaleType = ImageView.ScaleType.FIT_CENTER
+            }
+            val name = TextView(parent.context).apply {
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                setTextColor(0xFFFFFFFF.toInt())
+                textSize = 11f
+                gravity = Gravity.CENTER
+                maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            }
+            card.addView(icon)
+            card.addView(name)
+            return ViewHolder(card, icon, name)
+        }
+
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            val app = apps[position]
+            val pm = NeoLauncherApp.instance.packageManager
+            holder.icon.setImageDrawable(pm.getApplicationIcon(app))
+            holder.name.text = pm.getApplicationLabel(app)
+            holder.itemView.setOnClickListener { onItemClick(app) }
+        }
+
+        override fun getItemCount() = apps.size
+
+        class ViewHolder(itemView: View, val icon: ImageView, val name: TextView) : RecyclerView.ViewHolder(itemView)
+    }
+
     override fun onBackPressed() {
+        if (taskSwitcherOverlay.visibility == View.VISIBLE) {
+            hideTaskSwitcher()
+            return
+        }
         if (focusOverlay.visibility == View.VISIBLE) {
             hideFocusMode()
             return
@@ -520,29 +671,65 @@ class LauncherActivity : AppCompatActivity() {
 
     class AppsAdapter(
         private val apps: List<android.content.pm.ApplicationInfo>,
+        private val hidden: Set<String>,
         private val onItemClick: (android.content.pm.ApplicationInfo) -> Unit
     ) : RecyclerView.Adapter<AppsAdapter.ViewHolder>() {
         override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): ViewHolder {
-            val tv = TextView(parent.context).apply {
+            val container = LinearLayout(parent.context).apply {
                 layoutParams = RecyclerView.LayoutParams(
                     RecyclerView.LayoutParams.MATCH_PARENT,
                     RecyclerView.LayoutParams.WRAP_CONTENT
                 )
-                setPadding(0, 20, 0, 20)
-                setTextColor(parent.context.getColor(R.color.text_tertiary))
+                orientation = LinearLayout.VERTICAL
+                setPadding(0, 12, 0, 12)
+            }
+            val nameTv = TextView(parent.context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                setTextColor(0xFFFFFFFF.toInt())
                 textSize = 18f
             }
-            return ViewHolder(tv)
+            val sourceTv = TextView(parent.context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                setTextColor(0x66FFFFFF.toInt())
+                textSize = 12f
+            }
+            container.addView(nameTv)
+            container.addView(sourceTv)
+            return ViewHolder(container, nameTv, sourceTv)
         }
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val app = apps[position]
-            holder.textView.text = NeoLauncherApp.instance.packageManager.getApplicationLabel(app)
+            val pm = NeoLauncherApp.instance.packageManager
+            holder.nameText.text = pm.getApplicationLabel(app)
+            holder.sourceText.text = app.packageName
             holder.itemView.setOnClickListener { onItemClick(app) }
+            holder.itemView.setOnLongClickListener {
+                val activity = holder.itemView.context as LauncherActivity
+                activity.toggleHiddenApp(app.packageName)
+                true
+            }
+            if (app.packageName in hidden) {
+                holder.nameText.alpha = 0.4f
+                holder.sourceText.alpha = 0.4f
+            } else {
+                holder.nameText.alpha = 1f
+                holder.sourceText.alpha = 1f
+            }
         }
 
         override fun getItemCount() = apps.size
 
-        class ViewHolder(val textView: TextView) : RecyclerView.ViewHolder(textView)
+        class ViewHolder(
+            itemView: View,
+            val nameText: TextView,
+            val sourceText: TextView
+        ) : RecyclerView.ViewHolder(itemView)
     }
 }
