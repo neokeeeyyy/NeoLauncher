@@ -7,7 +7,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.media.AudioManager
 import android.os.Build
-import android.util.Log
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.WindowManager
@@ -25,7 +24,7 @@ class VolumeControlService : AccessibilityService() {
 
     private val volumeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            if (intent.action == AudioManager.VOLUME_CHANGED_ACTION) {
+            if (intent.action == "android.media.VOLUME_CHANGED_ACTION") {
                 val stream = intent.getIntExtra(AudioManager.EXTRA_VOLUME_STREAM_TYPE, -1)
                 if (stream != -1) currentStream = stream
                 val now = System.currentTimeMillis()
@@ -44,7 +43,7 @@ class VolumeControlService : AccessibilityService() {
         super.onServiceConnected()
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
-        val filter = IntentFilter(AudioManager.VOLUME_CHANGED_ACTION)
+        val filter = IntentFilter("android.media.VOLUME_CHANGED_ACTION")
         registerReceiver(volumeReceiver, filter)
     }
 
