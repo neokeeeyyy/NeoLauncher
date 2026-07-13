@@ -83,7 +83,7 @@ class VolumeControlService : AccessibilityService() {
             val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
             } else {
-                WindowManager.LayoutParams.TYPE_SYSTEM_ALERT
+                WindowManager.LayoutParams.TYPE_SYSTEM_ERROR
             }
 
             val params = WindowManager.LayoutParams(
