@@ -18,8 +18,8 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="12dp"
             android:measureAllChildren="true"
-            android:minHeight="100dp"
-            android:maxHeight="130dp">
+            android:minHeight="80dp"
+            android:maxHeight="100dp">
 
             <!-- Page 0: Clock -->
             <LinearLayout
@@ -53,91 +53,73 @@
                 android:id="@+id/musicPlayer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:minHeight="100dp"
-                android:maxHeight="130dp"
-                android:orientation="vertical">
+                android:minHeight="80dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
-                <FrameLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center">
-
-                    <ImageView
-                        android:id="@+id/ivAlbumArt"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:maxWidth="200dp"
-                        android:maxHeight="200dp"
-                        android:adjustViewBounds="true"
-                        android:scaleType="fitCenter"
-                        android:visibility="gone" />
-
-                </FrameLayout>
+                <ImageView
+                    android:id="@+id/ivAlbumArt"
+                    android:layout_width="100dp"
+                    android:layout_height="100dp"
+                    android:scaleType="fitCenter"
+                    android:visibility="gone" />
 
                 <LinearLayout
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
                     android:gravity="center_vertical"
-                    android:paddingVertical="6dp"
-                    android:paddingStart="0dp"
+                    android:paddingStart="10dp"
                     android:paddingEnd="8dp">
 
-                    <LinearLayout
-                        android:layout_width="0dp"
+                    <TextView
+                        android:id="@+id/tvTrackTitle"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
+                        android:text=""
+                        android:textColor="#B3FFFFFF"
+                        android:textSize="15sp"
+                        android:singleLine="true"
+                        android:ellipsize="end" />
 
-                        <TextView
-                            android:id="@+id/tvTrackTitle"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text=""
-                            android:textColor="#B3FFFFFF"
-                            android:textSize="15sp"
-                            android:singleLine="true"
-                            android:ellipsize="end" />
-
-                        <TextView
-                            android:id="@+id/tvTrackArtist"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text=""
-                            android:textColor="#66FFFFFF"
-                            android:textSize="13sp"
-                            android:singleLine="true"
-                            android:ellipsize="end" />
-
-                    </LinearLayout>
-
-                    <ImageView
-                        android:id="@+id/btnPrev"
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:src="@drawable/ic_skip_previous"
-                        android:tint="#66FFFFFF"
-                        android:padding="2dp"
-                        android:layout_marginEnd="8dp" />
-
-                    <ImageView
-                        android:id="@+id/btnPlayPause"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:src="@drawable/ic_play"
-                        android:tint="#FFFFFFFF"
-                        android:padding="2dp"
-                        android:layout_marginEnd="8dp" />
-
-                    <ImageView
-                        android:id="@+id/btnNext"
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:src="@drawable/ic_skip_next"
-                        android:tint="#66FFFFFF"
-                        android:padding="2dp" />
+                    <TextView
+                        android:id="@+id/tvTrackArtist"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text=""
+                        android:textColor="#66FFFFFF"
+                        android:textSize="13sp"
+                        android:singleLine="true"
+                        android:ellipsize="end" />
 
                 </LinearLayout>
+
+                <ImageView
+                    android:id="@+id/btnPrev"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:src="@drawable/ic_skip_previous"
+                    android:tint="#66FFFFFF"
+                    android:padding="2dp"
+                    android:layout_marginEnd="8dp" />
+
+                <ImageView
+                    android:id="@+id/btnPlayPause"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:src="@drawable/ic_play"
+                    android:tint="#FFFFFFFF"
+                    android:padding="2dp"
+                    android:layout_marginEnd="8dp" />
+
+                <ImageView
+                    android:id="@+id/btnNext"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:src="@drawable/ic_skip_next"
+                    android:tint="#66FFFFFF"
+                    android:padding="2dp" />
 
             </LinearLayout>
 
