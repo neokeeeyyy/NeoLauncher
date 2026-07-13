@@ -171,8 +171,8 @@ class LauncherActivity : AppCompatActivity() {
         appsList.adapter = adapter
     }
 
-    private fun setController(controllers: List<MediaController>) {
-        val ctrl = controllers.firstOrNull()
+    private fun setController(controllers: List<MediaController>?) {
+        val ctrl = controllers?.firstOrNull()
         if (ctrl != currentController) {
             currentController?.unregisterCallback(mediaCallback)
             currentController = ctrl
@@ -196,10 +196,11 @@ class LauncherActivity : AppCompatActivity() {
     private fun registerSessionListener() {
         try {
             val msm = getSystemService(MEDIA_SESSION_SERVICE) as MediaSessionManager
-            activeSessionsListener = MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
+            val listener = MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
                 setController(controllers)
             }
-            msm.addOnActiveSessionsChangedListener(activeSessionsListener, null)
+            activeSessionsListener = listener
+            msm.addOnActiveSessionsChangedListener(listener, null)
         } catch (_: Exception) { }
     }
 
@@ -366,10 +367,13 @@ class LauncherActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         currentController?.unregisterCallback(mediaCallback)
-        try {
-            val msm = getSystemService(MEDIA_SESSION_SERVICE) as MediaSessionManager
-            activeSessionsListener?.let { msm.removeOnActiveSessionsChangedListener(it) }
-        } catch (_: Exception) { }
+        val listener = activeSessionsListener
+        if (listener != null) {
+            try {
+                val msm = getSystemService(MEDIA_SESSION_SERVICE) as MediaSessionManager
+                msm.removeOnActiveSessionsChangedListener(listener)
+            } catch (_: Exception) { }
+        }
         stopAlarm()
     }
 
